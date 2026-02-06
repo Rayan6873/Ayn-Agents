@@ -1,0 +1,20 @@
+name: metrics_hourly
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # every hour (UTC)
+  workflow_dispatch: {}   # allows manual run
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Base44 agent job
+        env:
+          BASE44_APP_DOMAIN: ${{ secrets.BASE44_APP_DOMAIN }}
+          AGENT_TOKEN: ${{ secrets.AGENT_TOKEN }}
+        run: |
+          curl -sS -X POST "$BASE44_APP_DOMAIN/functions/agentJob" \
+            -H "Content-Type: application/json" \
+            -H "x-agent-token: $AGENT_TOKEN" \
+            -d '{"agent_name":"metrics_hourly","params":{}}'
