@@ -14,7 +14,12 @@ jobs:
           BASE44_APP_DOMAIN: ${{ secrets.BASE44_APP_DOMAIN }}
           AGENT_TOKEN: ${{ secrets.AGENT_TOKEN }}
         run: |
-          curl -sS -X POST "$BASE44_APP_DOMAIN/functions/agentJob" \
-            -H "Content-Type: application/json" \
-            -H "x-agent-token: $AGENT_TOKEN" \
-            -d '{"agent_name":"rollup_nightly","params":{}}'
+          run: |
+    set -e
+    RESP=$(curl -sS -X POST "$BASE44_APP_DOMAIN/functions/agentJob" \
+      -H "Content-Type: application/json" \
+      -H "x-agent-token: $AGENT_TOKEN" \
+      -d '{"agent_name":"events_ingest_daily","params":{}}')
+
+    echo "$RESP"
+    echo "$RESP" | grep '"ok":true' >/dev/null
