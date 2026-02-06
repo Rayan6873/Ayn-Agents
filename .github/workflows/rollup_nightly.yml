@@ -13,7 +13,7 @@ jobs:
         env:
           BASE44_APP_DOMAIN: ${{ secrets.BASE44_APP_DOMAIN }}
           AGENT_TOKEN: ${{ secrets.AGENT_TOKEN }}
-        run: |
+        run:  |
           set -e
           RESP=$(curl -sS -X POST "$BASE44_APP_DOMAIN/functions/agentJob" \
             -H "Content-Type: application/json" \
