@@ -1,7 +1,7 @@
 name: Agent Runner
 
 on:
-  workflow_dispatch:
+   workflow_dispatch:
     inputs:
       run_id:
         description: "Base44 AgentRun ID"
@@ -9,8 +9,14 @@ on:
       agent_name:
         description: "Agent name"
         required: true
-      params_json:
-        description: "JSON params"
+      task_id:
+        description: "Task ID"
+        required: false
+      run_source:
+        description: "Run source"
+        required: false
+      inputs_json:
+        description: "JSON inputs"
         required: false
         default: "{}"
 
