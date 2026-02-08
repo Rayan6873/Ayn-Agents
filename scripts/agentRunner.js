@@ -50,14 +50,51 @@ async function invokeBase44(fnName, payload) {
  */
 async function runAgent(agentName, params) {
   switch (agentName) {
-    // Example:
-    // case "outreach_drafts_daily":
-    //   return (await import("../agents/outreach_drafts_daily.js")).default(params);
+    case "outreach_drafts_daily":
+      return (await import("./agents/outreach_drafts_daily.mjs")).default(params);
+
+    case "events_ingest_daily":
+      return (await import("./agents/events_ingest_daily.mjs")).default(params);
+
+    case "metrics_hourly":
+      return (await import("./agents/metrics_hourly.mjs")).default(params);
+
+    case "rollup_nightly":
+      return (await import("./agents/rollup_nightly.mjs")).default(params);
 
     default:
-      throw new Error(`Unknown agent_name "${agentName}" - add it in scripts/agentRunner.js`);
+      throw new Error(`Unknown agent_name "${agentName}" - add it in scripts/agentRunner.mjs`);
   }
 }
+4) IMPORTANT: Node + ESM sanity check
+In your repo package.json, make sure you have:
+
+json
+Copy code
+{
+  "type": "module"
+}
+And your workflow uses Node 20 (you already set that).
+
+What I need from you to make outreach_drafts_daily “real”
+Right now I gave you a working scaffold, but it won’t match your actual schema perfectly.
+
+Send me one screenshot or paste of:
+
+your Lead entity fields
+
+your OutreachDraft entity fields (or whatever you named it)
+
+…and I’ll rewrite the agent to be exact + production-safe (idempotency, daily cap, “not contacted today”, etc.).
+
+
+
+
+
+
+
+
+
 
 (async () => {
   const started = Date.now();
