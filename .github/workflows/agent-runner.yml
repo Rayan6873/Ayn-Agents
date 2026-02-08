@@ -1,0 +1,33 @@
+# .github/workflows/agent-runner.yml
+name: agent-runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        required: true
+        type: string
+      agent_name:
+        required: true
+        type: string
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install
+        run: npm ci
+
+      - name: Execute agent
+        env:
+          BASE44_API_KEY: ${{ secrets.BASE44_API_KEY }}
+          BASE44_BASE_URL: ${{ secrets.BASE44_BASE_URL }}
+        run: |
+          node scripts/run-agent.js --run_id "${{ inputs.run_id }}" --agent_name "${{ inputs.agent_name }}"
