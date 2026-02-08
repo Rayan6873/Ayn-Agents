@@ -15,7 +15,7 @@ on:
       run_source:
         description: "Run source"
         required: false
-      inputs_json:
+      params_json:
         description: "JSON inputs"
         required: false
         default: "{}"
