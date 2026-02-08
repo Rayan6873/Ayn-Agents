@@ -18,7 +18,8 @@ if (!BASE44_API_URL || !BASE44_API_KEY || !BASE44_APP_ID) {
 
 const run_id = getArg("run_id");
 const agent_name = getArg("agent_name");
-const params_json_raw = getArg("params_json") || "{}";
+const raw = getArg("params_json");
+const params_json_raw = (raw && raw.trim().length > 0) ? raw : "{}";
 
 if (!run_id || !agent_name) {
   console.error("Missing required args: --run_id, --agent_name");
