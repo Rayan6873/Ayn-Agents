@@ -63,7 +63,7 @@ async function runAgent(agentName, params) {
       return (await import("./agents/rollup_nightly.mjs")).default(params);
 
     default:
-      throw new Error(`Unknown agent_name "${agentName}" - add it in scripts/agentRunner.mjs`);
+      throw new Error(`Unknown agent_name "${agentName}" - add it in scripts/agentRunner.js`);
   }
 }
 (async () => {
