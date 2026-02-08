@@ -30,17 +30,17 @@ jobs:
       BASE44_API_KEY: ${{ secrets.BASE44_API_KEY }}
       BASE44_APP_ID: ${{ secrets.BASE44_APP_ID }}
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+   steps:
+  - name: Checkout
+    uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+  - name: Setup Node
+    uses: actions/setup-node@v4
+    with:
+      node-version: 20
 
-      - name: Install deps
-        run: npm install
+  - name: Install deps
+    run: npm install
 
-      - name: Run agent
-              run: node scripts/agentRunner.js --run_id=${{ inputs.run_id }} --agent_name=${{ inputs.agent_name }} --params_json='${{ inputs.params_json }}'
+  - name: Run agent
+    run: node scripts/agentRunner.js --run_id=${{ inputs.run_id }} --agent_name=${{ inputs.agent_name }} --params_json='${{ inputs.params_json }}'
