@@ -1,0 +1,9 @@
+{
+  "name": "ayn-agents",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "agent:run": "node scripts/agentRunner.js"
+  },
+  "dependencies": {}
+}
