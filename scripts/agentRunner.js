@@ -66,36 +66,6 @@ async function runAgent(agentName, params) {
       throw new Error(`Unknown agent_name "${agentName}" - add it in scripts/agentRunner.mjs`);
   }
 }
-4) IMPORTANT: Node + ESM sanity check
-In your repo package.json, make sure you have:
-
-json
-Copy code
-{
-  "type": "module"
-}
-And your workflow uses Node 20 (you already set that).
-
-What I need from you to make outreach_drafts_daily “real”
-Right now I gave you a working scaffold, but it won’t match your actual schema perfectly.
-
-Send me one screenshot or paste of:
-
-your Lead entity fields
-
-your OutreachDraft entity fields (or whatever you named it)
-
-…and I’ll rewrite the agent to be exact + production-safe (idempotency, daily cap, “not contacted today”, etc.).
-
-
-
-
-
-
-
-
-
-
 (async () => {
   const started = Date.now();
 
