@@ -34,7 +34,7 @@ jobs:
           node-version: 20
 
       - name: Install deps
-        run: npm ci
+        run: npm install
 
       - name: Run agent
-        run: node scripts/agentRunner.js --run_id=${{ inputs.run_id }} --agent_name=${{ inputs.agent_name }} --params_json='${{ inputs.params_json }}'
+        run: node scripts/agentRunner.mjs --run_id=${{ inputs.run_id }} --agent_name=${{ inputs.agent_name }} --params_json='${{ inputs.params_json }}'
