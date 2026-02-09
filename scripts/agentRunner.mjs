@@ -17,7 +17,7 @@ function getArg(name) {
   return hit ? hit.slice(prefix.length) : null;
 }
 
-const BASE44_API_URL = process.env.BASE44_API_URL; // must be API host that serves /apps/{appId}/...
+const BASE44_API_URL = process.env.BASE44_API_URL; // must be API host that serves /api/apps/{appId}/...
 const BASE44_API_KEY = process.env.BASE44_API_KEY; // service key / bearer token
 const BASE44_APP_ID  = process.env.BASE44_APP_ID;  // the Base44 app ID (NOT name)
 
@@ -51,22 +51,29 @@ try {
 /* -------------------------
  * Base44 Entities API (raw fetch)
  * ------------------------- */
-async function base44Post(path, body) {
-  // path example: /entities/AgentRun/update
-  const url = `${BASE44_API_URL.replace(/\/$/, "")}/apps/${BASE44_APP_ID}${path}`;
+async function base44Request(method, entityName, entityId, body) {
+  // Construct URL based on whether we're updating (with ID) or creating (without ID)
+  let url;
+  if (entityId) {
+    // Update: PUT /api/apps/{appId}/entities/{EntityName}/{id}
+    url = `${BASE44_API_URL.replace(/\/$/, "")}/apps/${BASE44_APP_ID}/entities/${entityName}/${entityId}`;
+  } else {
+    // Create: POST /api/apps/{appId}/entities/{EntityName}
+    url = `${BASE44_API_URL.replace(/\/$/, "")}/apps/${BASE44_APP_ID}/entities/${entityName}`;
+  }
 
   const res = await fetch(url, {
-    method: "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${BASE44_API_KEY}`,
+      "api_key": BASE44_API_KEY,
     },
-    body: JSON.stringify(body ?? {}),
+    body: body ? JSON.stringify(body) : undefined,
   });
 
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(`Base44 API ${res.status} for ${path}: ${text}`);
+    throw new Error(`Base44 API ${res.status} for ${method} ${entityName}${entityId ? `/${entityId}` : ''}: ${text}`);
   }
 
   try {
@@ -77,12 +84,13 @@ async function base44Post(path, body) {
 }
 
 async function updateAgentRun(id, patch) {
-  // Base44 update expects: { id, ...fields }
-  return base44Post(`/entities/AgentRun/update`, { id, ...patch });
+  // Base44 update uses PUT with the entity ID in the URL
+  return base44Request("PUT", "AgentRun", id, patch);
 }
 
 async function createSystemAlert({ severity, message, agent_run_id }) {
-  return base44Post(`/entities/SystemAlert/create`, {
+  // Base44 create uses POST without ID
+  return base44Request("POST", "SystemAlert", null, {
     severity: severity || "critical",
     message,
     agent_run_id,
