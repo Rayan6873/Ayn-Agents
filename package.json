@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "agent:run": "node scripts/agentRunner.js"
+    "agent:run": "node scripts/agentRunner.mjs"
   },
   "dependencies": {}
 }
