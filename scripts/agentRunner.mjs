@@ -1,6 +1,16 @@
-/* scripts/agentRunner.mjs */
+/* scripts/agentRunner.mjs
+ *
+ * GitHub Actions runner entrypoint.
+ * - Receives: run_id, agent_name, params_json
+ * - Updates Base44 AgentRun state via Entities API (NO function invoke)
+ * - Executes the agent implementation from ./agents/*.mjs
+ */
+
 import process from "process";
 
+// -------------------------
+// Args + Env
+// -------------------------
 function getArg(name) {
   const prefix = `--${name}=`;
   const hit = process.argv.find((a) => a.startsWith(prefix));
@@ -11,7 +21,6 @@ const BASE44_API_URL = process.env.BASE44_API_URL;
 const BASE44_API_KEY = process.env.BASE44_API_KEY;
 const BASE44_APP_ID = process.env.BASE44_APP_ID;
 
-
 if (!BASE44_API_URL || !BASE44_API_KEY || !BASE44_APP_ID) {
   console.error("Missing required env vars: BASE44_API_URL, BASE44_API_KEY, BASE44_APP_ID");
   process.exit(1);
@@ -19,8 +28,10 @@ if (!BASE44_API_URL || !BASE44_API_KEY || !BASE44_APP_ID) {
 
 const run_id = getArg("run_id");
 const agent_name = getArg("agent_name");
-const raw = getArg("params_json");
-const params_json_raw = (raw && raw.trim().length > 0) ? raw : "{}";
+const rawParams = getArg("params_json");
+
+// GitHub sometimes passes empty string. Treat empty as {}
+const params_json_raw = (rawParams && rawParams.trim().length > 0) ? rawParams : "{}";
 
 if (!run_id || !agent_name) {
   console.error("Missing required args: --run_id, --agent_name");
@@ -28,35 +39,83 @@ if (!run_id || !agent_name) {
 }
 
 let params = {};
-try { params = JSON.parse(params_json_raw); } catch { params = {}; }
+try {
+  params = JSON.parse(params_json_raw);
+} catch (e) {
+  console.error("params_json is not valid JSON. Falling back to {}. Raw:", params_json_raw);
+  params = {};
+}
 
-async function invokeBase44(fnName, payload) {
-  const base = String(process.env.BASE44_API_URL || "").replace(/\/$/, "");
-  // Base44 callable functions are here:
-  const url = `${base}/functions/${fnName}`;
-
-  console.log("invokeBase44 →", fnName, url); // keep this until everything works
+// -------------------------
+// Base44 Entities API helper
+// -------------------------
+async function base44Post(path, body) {
+  const url = `${BASE44_API_URL}/apps/${BASE44_APP_ID}${path}`;
 
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.BASE44_API_KEY}`,
+      "Authorization": `Bearer ${BASE44_API_KEY}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body ?? {}),
   });
 
   const text = await res.text();
-  if (!res.ok) throw new Error(`Base44 ${fnName} failed: ${res.status} ${text}`);
-  try { return JSON.parse(text); } catch { return text; }
+  if (!res.ok) {
+    throw new Error(`Base44 API failed ${res.status} for ${path}: ${text}`);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
+async function updateAgentRun(id, patch) {
+  // Patch: { status, outputs_json, error_message, duration_ms, severity, finished_at, ... }
+  return base44Post(`/entities/AgentRun/update`, { id, ...patch });
+}
 
+async function createSystemAlert({ severity, message, agent_run_id }) {
+  return base44Post(`/entities/SystemAlert/create`, {
+    severity: severity || "critical",
+    message,
+    agent_run_id,
+    status: "open",
+    resolved_at: null,
+  });
+}
 
-/**
- * Map agent_name -> real agent implementation in THIS repo.
- * Keep agent implementations in /agents/* or similar.
- */
+// Optional: safe attempt to mark failure even if Base44 is down
+async function safeMarkFailed({ message, duration_ms }) {
+  try {
+    await updateAgentRun(run_id, {
+      status: "failed",
+      severity: "critical",
+      error_message: message,
+      duration_ms,
+      finished_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("Failed to mark AgentRun as failed in Base44:", e?.message || e);
+  }
+
+  try {
+    await createSystemAlert({
+      severity: "critical",
+      message: `Agent failed: ${agent_name} — ${message}`,
+      agent_run_id: run_id,
+    });
+  } catch (e) {
+    console.error("Failed to create SystemAlert in Base44:", e?.message || e);
+  }
+}
+
+// -------------------------
+// Agent dispatch
+// -------------------------
 async function runAgent(agentName, params) {
   switch (agentName) {
     case "outreach_drafts_daily":
@@ -78,40 +137,47 @@ async function runAgent(agentName, params) {
       throw new Error(`Unknown agent_name "${agentName}" - add it in scripts/agentRunner.mjs`);
   }
 }
+
+// -------------------------
+// Main
+// -------------------------
 (async () => {
   const started = Date.now();
 
-  // Mark running (idempotent server-side update)
-  await invokeBase44("agentRunUpdate", {
-    run_id,
-    status: "running",
-    severity: "info",
-  });
+  // 1) Mark running
+  try {
+    await updateAgentRun(run_id, {
+      status: "running",
+      severity: "info",
+    });
+  } catch (e) {
+    // If we can't even mark running, fail early (otherwise you'll get "queued forever")
+    const msg = e?.message || String(e);
+    console.error("Cannot update AgentRun to running:", msg);
+    await safeMarkFailed({ message: `Failed to mark running: ${msg}`, duration_ms: Date.now() - started });
+    process.exit(1);
+  }
 
+  // 2) Execute agent
   try {
     const outputs = await runAgent(agent_name, params);
 
-    await invokeBase44("agentRunUpdate", {
-      run_id,
+    // 3) Mark success
+    await updateAgentRun(run_id, {
       status: "success",
+      severity: "info",
       outputs_json: outputs ?? {},
       duration_ms: Date.now() - started,
-      severity: "info",
+      finished_at: new Date().toISOString(),
     });
 
     console.log("✅ Agent run success:", run_id, agent_name);
+    process.exit(0);
   } catch (err) {
     const msg = err?.message || String(err);
-
-    await invokeBase44("agentRunUpdate", {
-      run_id,
-      status: "failed",
-      error_message: msg,
-      duration_ms: Date.now() - started,
-      severity: "critical",
-    });
-
     console.error("❌ Agent run failed:", run_id, agent_name, msg);
+
+    await safeMarkFailed({ message: msg, duration_ms: Date.now() - started });
     process.exit(1);
   }
 })();
