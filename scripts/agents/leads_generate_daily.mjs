@@ -134,7 +134,7 @@ export default async function leads_generate_daily(params = {}) {
       Lead: {
         filter: (where) => base44Req(`/entities/Lead/filter`, where),
         create: (data) => base44Req(`/entities/Lead/create`, data),
-        update: (id, data) => base44Req(`/entities/Lead/update`, { id, ...data }),
+        update: (id, data) => base44Req(`/entities/Lead/update`, { id, data }),
       }
     }
   };
@@ -160,7 +160,7 @@ export default async function leads_generate_daily(params = {}) {
 
     // Pull more than needed, then filter + dedupe
     const nearby = await nearbySearch({ lat: city.lat, lng: city.lng, radius_m, keyword: b.keyword });
-    const candidates = (nearby.results || []).slice(0, 40);
+    const candidates = (nearby.results || []).slice(0, Math.max(15, limit * 3));
 
     let taken = 0;
     for (const c of candidates) {
