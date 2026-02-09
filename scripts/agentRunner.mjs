@@ -50,7 +50,8 @@ try {
 // Base44 Entities API helper
 // -------------------------
 async function base44Post(path, body) {
-  const url = `${BASE44_API_URL}/apps/${BASE44_APP_ID}${path}`;
+  const base = String(BASE44_API_URL).replace(/\/$/, '');
+  const url = `${base}${path}`;  // Remove /apps/${BASE44_APP_ID}
 
   const res = await fetch(url, {
     method: "POST",
@@ -72,7 +73,6 @@ async function base44Post(path, body) {
     return text;
   }
 }
-
 async function updateAgentRun(id, patch) {
   // Patch: { status, outputs_json, error_message, duration_ms, severity, finished_at, ... }
   return base44Post(`/entities/AgentRun/update`, { id, ...patch });
