@@ -31,22 +31,24 @@ let params = {};
 try { params = JSON.parse(params_json_raw); } catch { params = {}; }
 
 async function invokeBase44(fnName, payload) {
-  const base = String(process.env.BASE44_API_URL).replace(/\/$/, '');
+  const base = String(process.env.BASE44_API_URL).replace(/\/$/, "");
   const url = `${base}/functions/${fnName}`;
-  
+  console.log("invokeBase44 →", fnName, url);
+
   const res = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.BASE44_API_KEY}`
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.BASE44_API_KEY}`,
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
-  
+
   const text = await res.text();
   if (!res.ok) throw new Error(`Base44 ${fnName} failed: ${res.status} ${text}`);
   try { return JSON.parse(text); } catch { return text; }
 }
+
 
 /**
  * Map agent_name -> real agent implementation in THIS repo.
