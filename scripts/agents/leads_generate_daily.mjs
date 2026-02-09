@@ -1,4 +1,6 @@
 /* scripts/agents/leads_generate_daily.mjs */
+import { base44Entity } from "../lib/base44.mjs";
+
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
 function assertEnv() {
@@ -74,18 +76,18 @@ function scoreLead({ rating = 0, reviews = 0, bucket }) {
   return Math.round(Math.min(100, ratingScore + reviewsScore + bucketBoost));
 }
 
-async function upsertLead(base44, lead) {
-  // You said Lead has place_id unique. We’ll upsert by filter then create/update.
-  const existing = await base44.entities.Lead.filter({ place_id: lead.place_id });
+async function upsertLead(lead) {
+  // Use the corrected base44Entity helper from lib/base44.mjs
+  const existing = await base44Entity.filter("Lead", { place_id: lead.place_id });
   const hit = Array.isArray(existing) ? existing[0] : null;
 
   if (hit?.id) {
-    // Don’t overwrite outreach status if it’s already being worked
+    // Don't overwrite outreach status if it's already being worked
     const safeUpdate = { ...lead };
     delete safeUpdate.outreach_status;
-    return base44.entities.Lead.update(hit.id, safeUpdate);
+    return base44Entity.update("Lead", hit.id, safeUpdate);
   }
-  return base44.entities.Lead.create(lead);
+  return base44Entity.create("Lead", lead);
 }
 
 export default async function leads_generate_daily(params = {}) {
@@ -104,40 +106,6 @@ export default async function leads_generate_daily(params = {}) {
       other_food: 5,
     },
   } = params;
-
-  // base44 client should be provided by your agentRunner import context OR you can pass in
-  // But in your pattern, agent files only return outputs. So we call Base44 via REST inside agentRunner,
-  // OR we keep agents pure and do Base44 writes via helper.
-  // Easiest: use Base44 REST directly here (same as agentRunner invokeBase44).
-  const BASE44_API_URL = process.env.BASE44_API_URL;
-  const BASE44_API_KEY = process.env.BASE44_API_KEY;
-  const BASE44_APP_ID  = process.env.BASE44_APP_ID;
-
-  if (!BASE44_API_URL || !BASE44_API_KEY || !BASE44_APP_ID) {
-    throw new Error("Missing Base44 env vars in runner: BASE44_API_URL, BASE44_API_KEY, BASE44_APP_ID");
-  }
-
-  async function base44Req(path, body) {
-    const url = `${BASE44_API_URL}/apps/${BASE44_APP_ID}${path}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${BASE44_API_KEY}` },
-      body: JSON.stringify(body),
-    });
-    const text = await res.text();
-    if (!res.ok) throw new Error(`Base44 API failed ${res.status}: ${text}`);
-    return JSON.parse(text);
-  }
-
-  const base44 = {
-    entities: {
-      Lead: {
-        filter: (where) => base44Req(`/entities/Lead/filter`, where),
-        create: (data) => base44Req(`/entities/Lead/create`, data),
-        update: (id, data) => base44Req(`/entities/Lead/update`, { id, data }),
-      }
-    }
-  };
 
   const city = await resolveCity({ city_query, country });
   if (!city.lat || !city.lng) throw new Error(`City resolved but missing lat/lng: ${JSON.stringify(city)}`);
@@ -203,7 +171,7 @@ export default async function leads_generate_daily(params = {}) {
         outreach_attempts: 0,
       };
 
-      await upsertLead(base44, lead);
+      await upsertLead(lead);
       created.push({ place_id: lead.place_id, name: lead.name, bucket, lead_score });
       taken++;
     }
