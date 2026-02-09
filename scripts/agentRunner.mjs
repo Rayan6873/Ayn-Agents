@@ -31,16 +31,18 @@ let params = {};
 try { params = JSON.parse(params_json_raw); } catch { params = {}; }
 
 async function invokeBase44(fnName, payload) {
-  const url = `${BASE44_API_URL}/apps/${BASE44_APP_ID}/functions/${fnName}/invoke`;
+  const base = String(process.env.BASE44_API_URL).replace(/\/$/, '');
+  const url = `${base}/functions/${fnName}`;
+  
   const res = await fetch(url, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${BASE44_API_KEY}`,
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.BASE44_API_KEY}`
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(payload)
   });
-
+  
   const text = await res.text();
   if (!res.ok) throw new Error(`Base44 ${fnName} failed: ${res.status} ${text}`);
   try { return JSON.parse(text); } catch { return text; }
