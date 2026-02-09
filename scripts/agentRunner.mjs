@@ -1,4 +1,4 @@
-/* scripts/agentRunner.js */
+/* scripts/agentRunner.mjs */
 import process from "process";
 
 function getArg(name) {
@@ -64,7 +64,7 @@ async function runAgent(agentName, params) {
       return (await import("./agents/rollup_nightly.mjs")).default(params);
 
     default:
-      throw new Error(`Unknown agent_name "${agentName}" - add it in scripts/agentRunner.js`);
+      throw new Error(`Unknown agent_name "${agentName}" - add it in scripts/agentRunner.mjs`);
   }
 }
 (async () => {
