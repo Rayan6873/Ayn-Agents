@@ -11,6 +11,7 @@ const BASE44_API_URL = process.env.BASE44_API_URL;
 const BASE44_API_KEY = process.env.BASE44_API_KEY;
 const BASE44_APP_ID = process.env.BASE44_APP_ID;
 
+
 if (!BASE44_API_URL || !BASE44_API_KEY || !BASE44_APP_ID) {
   console.error("Missing required env vars: BASE44_API_URL, BASE44_API_KEY, BASE44_APP_ID");
   process.exit(1);
@@ -62,6 +63,9 @@ async function runAgent(agentName, params) {
 
     case "rollup_nightly":
       return (await import("./agents/rollup_nightly.mjs")).default(params);
+
+    case "leads_generate_daily":
+      return (await import("./agents/leads_generate_daily.mjs")).default(params);
 
     default:
       throw new Error(`Unknown agent_name "${agentName}" - add it in scripts/agentRunner.mjs`);
