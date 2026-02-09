@@ -7,6 +7,8 @@
  */
 
 import process from "process";
+import { createClient } from '@base44/sdk';
+
 
 // -------------------------
 // Args + Env
@@ -49,44 +51,24 @@ try {
 // -------------------------
 // Base44 Entities API helper
 // -------------------------
-async function base44Request(method, path, body) {
-  const base = String(BASE44_API_URL).replace(/\/$/, '');
-  const url = `${base}${path}`;
-
-  const res = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${BASE44_API_KEY}`,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`Base44 API failed ${res.status} for ${path}: ${text}`);
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
+const base44 = createClient({
+  apiUrl: BASE44_API_URL,
+  serviceRoleKey: BASE44_API_KEY,
+});
 
 async function updateAgentRun(id, patch) {
-  return base44Request('PATCH', `/entities/AgentRun/${id}`, patch);
+  return base44.entities.AgentRun.update(id, patch);
 }
 
 async function createSystemAlert({ severity, message, agent_run_id }) {
-  return base44Request('POST', '/entities/SystemAlert', {
+  return base44.entities.SystemAlert.create({
     severity: severity || "critical",
     message,
     agent_run_id,
     status: "open",
   });
 }
-// Optional: safe attempt to mark failure even if Base44 is down
+
 async function safeMarkFailed({ message, duration_ms }) {
   try {
     await updateAgentRun(run_id, {
@@ -97,7 +79,7 @@ async function safeMarkFailed({ message, duration_ms }) {
       finished_at: new Date().toISOString(),
     });
   } catch (e) {
-    console.error("Failed to mark AgentRun as failed in Base44:", e?.message || e);
+    console.error("Failed to mark AgentRun as failed:", e?.message || e);
   }
 
   try {
@@ -107,7 +89,7 @@ async function safeMarkFailed({ message, duration_ms }) {
       agent_run_id: run_id,
     });
   } catch (e) {
-    console.error("Failed to create SystemAlert in Base44:", e?.message || e);
+    console.error("Failed to create SystemAlert:", e?.message || e);
   }
 }
 
