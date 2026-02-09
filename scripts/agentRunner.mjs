@@ -7,23 +7,24 @@
  */
 
 import process from "process";
-import { createClient } from '@base44/sdk';
 
-
-// -------------------------
-// Args + Env
-// -------------------------
+/* -------------------------
+ * Args + Env
+ * ------------------------- */
 function getArg(name) {
   const prefix = `--${name}=`;
   const hit = process.argv.find((a) => a.startsWith(prefix));
   return hit ? hit.slice(prefix.length) : null;
 }
 
-const BASE44_API_URL = process.env.BASE44_API_URL;
-const BASE44_API_KEY = process.env.BASE44_API_KEY;
+const BASE44_API_URL = process.env.BASE44_API_URL; // must be API host that serves /apps/{appId}/...
+const BASE44_API_KEY = process.env.BASE44_API_KEY; // service key / bearer token
+const BASE44_APP_ID  = process.env.BASE44_APP_ID;  // the Base44 app ID (NOT name)
 
 if (!BASE44_API_URL || !BASE44_API_KEY || !BASE44_APP_ID) {
-  console.error("Missing required env vars: BASE44_API_URL, BASE44_API_KEY, BASE44_APP_ID");
+  console.error(
+    "Missing required env vars: BASE44_API_URL, BASE44_API_KEY, BASE44_APP_ID"
+  );
   process.exit(1);
 }
 
@@ -31,8 +32,8 @@ const run_id = getArg("run_id");
 const agent_name = getArg("agent_name");
 const rawParams = getArg("params_json");
 
-// GitHub sometimes passes empty string. Treat empty as {}
-const params_json_raw = (rawParams && rawParams.trim().length > 0) ? rawParams : "{}";
+// GitHub sometimes passes empty string -> treat as {}
+const params_json_raw = rawParams && rawParams.trim().length > 0 ? rawParams : "{}";
 
 if (!run_id || !agent_name) {
   console.error("Missing required args: --run_id, --agent_name");
@@ -42,27 +43,46 @@ if (!run_id || !agent_name) {
 let params = {};
 try {
   params = JSON.parse(params_json_raw);
-} catch (e) {
-  console.error("params_json is not valid JSON. Falling back to {}. Raw:", params_json_raw);
+} catch {
+  console.error("params_json not valid JSON. Using {}. Raw:", params_json_raw);
   params = {};
 }
 
-// -------------------------
-// Base44 Entities API helper
-// -------------------------
-const base44 = createClient({
-  apiUrl: process.env.BASE44_API_URL || 'https://api.base44.com',
-  headers: {
-    'Authorization': `Bearer ${AGENT_TOKEN}`
+/* -------------------------
+ * Base44 Entities API (raw fetch)
+ * ------------------------- */
+async function base44Post(path, body) {
+  // path example: /entities/AgentRun/update
+  const url = `${BASE44_API_URL.replace(/\/$/, "")}/apps/${BASE44_APP_ID}${path}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${BASE44_API_KEY}`,
+    },
+    body: JSON.stringify(body ?? {}),
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Base44 API ${res.status} for ${path}: ${text}`);
   }
-});
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
 
 async function updateAgentRun(id, patch) {
-  return base44.entities.AgentRun.update(id, patch);
+  // Base44 update expects: { id, ...fields }
+  return base44Post(`/entities/AgentRun/update`, { id, ...patch });
 }
 
 async function createSystemAlert({ severity, message, agent_run_id }) {
-  return base44.entities.SystemAlert.create({
+  return base44Post(`/entities/SystemAlert/create`, {
     severity: severity || "critical",
     message,
     agent_run_id,
@@ -71,16 +91,18 @@ async function createSystemAlert({ severity, message, agent_run_id }) {
 }
 
 async function safeMarkFailed({ message, duration_ms }) {
+  const finished_at = new Date().toISOString();
+
   try {
     await updateAgentRun(run_id, {
       status: "failed",
       severity: "critical",
       error_message: message,
       duration_ms,
-      finished_at: new Date().toISOString(),
+      finished_at,
     });
   } catch (e) {
-    console.error("Failed to mark AgentRun as failed:", e?.message || e);
+    console.error("Failed to mark AgentRun as failed in Base44:", e?.message || e);
   }
 
   try {
@@ -90,13 +112,13 @@ async function safeMarkFailed({ message, duration_ms }) {
       agent_run_id: run_id,
     });
   } catch (e) {
-    console.error("Failed to create SystemAlert:", e?.message || e);
+    console.error("Failed to create SystemAlert in Base44:", e?.message || e);
   }
 }
 
-// -------------------------
-// Agent dispatch
-// -------------------------
+/* -------------------------
+ * Agent dispatch
+ * ------------------------- */
 async function runAgent(agentName, params) {
   switch (agentName) {
     case "outreach_drafts_daily":
@@ -119,9 +141,9 @@ async function runAgent(agentName, params) {
   }
 }
 
-// -------------------------
-// Main
-// -------------------------
+/* -------------------------
+ * Main
+ * ------------------------- */
 (async () => {
   const started = Date.now();
 
@@ -132,10 +154,12 @@ async function runAgent(agentName, params) {
       severity: "info",
     });
   } catch (e) {
-    // If we can't even mark running, fail early (otherwise you'll get "queued forever")
     const msg = e?.message || String(e);
     console.error("Cannot update AgentRun to running:", msg);
-    await safeMarkFailed({ message: `Failed to mark running: ${msg}`, duration_ms: Date.now() - started });
+    await safeMarkFailed({
+      message: `Failed to mark running: ${msg}`,
+      duration_ms: Date.now() - started,
+    });
     process.exit(1);
   }
 
@@ -158,7 +182,10 @@ async function runAgent(agentName, params) {
     const msg = err?.message || String(err);
     console.error("❌ Agent run failed:", run_id, agent_name, msg);
 
-    await safeMarkFailed({ message: msg, duration_ms: Date.now() - started });
+    await safeMarkFailed({
+      message: msg,
+      duration_ms: Date.now() - started,
+    });
     process.exit(1);
   }
 })();
