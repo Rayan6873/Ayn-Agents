@@ -52,9 +52,10 @@ try {
 // Base44 Entities API helper
 // -------------------------
 const base44 = createClient({
-  apiUrl: BASE44_API_URL,
-  serviceRoleKey: BASE44_API_KEY,
-  appId: BASE44_APP_ID,
+  apiUrl: process.env.BASE44_API_URL || 'https://api.base44.com',
+  headers: {
+    'Authorization': `Bearer ${AGENT_TOKEN}`
+  }
 });
 
 async function updateAgentRun(id, patch) {
