@@ -31,9 +31,11 @@ let params = {};
 try { params = JSON.parse(params_json_raw); } catch { params = {}; }
 
 async function invokeBase44(fnName, payload) {
-  const base = String(process.env.BASE44_API_URL).replace(/\/$/, "");
+  const base = String(process.env.BASE44_API_URL || "").replace(/\/$/, "");
+  // Base44 callable functions are here:
   const url = `${base}/functions/${fnName}`;
-  console.log("invokeBase44 →", fnName, url);
+
+  console.log("invokeBase44 →", fnName, url); // keep this until everything works
 
   const res = await fetch(url, {
     method: "POST",
@@ -48,6 +50,7 @@ async function invokeBase44(fnName, payload) {
   if (!res.ok) throw new Error(`Base44 ${fnName} failed: ${res.status} ${text}`);
   try { return JSON.parse(text); } catch { return text; }
 }
+
 
 
 /**
