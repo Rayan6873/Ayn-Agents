@@ -54,6 +54,7 @@ try {
 const base44 = createClient({
   apiUrl: BASE44_API_URL,
   serviceRoleKey: BASE44_API_KEY,
+  appId: BASE44_APP_ID,
 });
 
 async function updateAgentRun(id, patch) {
