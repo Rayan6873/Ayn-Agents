@@ -21,7 +21,6 @@ function getArg(name) {
 
 const BASE44_API_URL = process.env.BASE44_API_URL;
 const BASE44_API_KEY = process.env.BASE44_API_KEY;
-const BASE44_APP_ID = process.env.BASE44_APP_ID;
 
 if (!BASE44_API_URL || !BASE44_API_KEY || !BASE44_APP_ID) {
   console.error("Missing required env vars: BASE44_API_URL, BASE44_API_KEY, BASE44_APP_ID");
