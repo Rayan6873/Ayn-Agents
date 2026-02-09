@@ -26,6 +26,9 @@ jobs:
       GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
 
     steps:
+      - name: Install dependencies
+        run: npm install @base44/sdk@0.8.6
+    
       - name: Checkout
         uses: actions/checkout@v4
 
