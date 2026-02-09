@@ -49,17 +49,17 @@ try {
 // -------------------------
 // Base44 Entities API helper
 // -------------------------
-async function base44Post(path, body) {
+async function base44Request(method, path, body) {
   const base = String(BASE44_API_URL).replace(/\/$/, '');
-  const url = `${base}${path}`;  // Remove /apps/${BASE44_APP_ID}
+  const url = `${base}${path}`;
 
   const res = await fetch(url, {
-    method: "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${BASE44_API_KEY}`,
     },
-    body: JSON.stringify(body ?? {}),
+    body: body ? JSON.stringify(body) : undefined,
   });
 
   const text = await res.text();
@@ -73,21 +73,19 @@ async function base44Post(path, body) {
     return text;
   }
 }
+
 async function updateAgentRun(id, patch) {
-  // Patch: { status, outputs_json, error_message, duration_ms, severity, finished_at, ... }
-  return base44Post(`/entities/AgentRun/update`, { id, ...patch });
+  return base44Request('PATCH', `/entities/AgentRun/${id}`, patch);
 }
 
 async function createSystemAlert({ severity, message, agent_run_id }) {
-  return base44Post(`/entities/SystemAlert/create`, {
+  return base44Request('POST', '/entities/SystemAlert', {
     severity: severity || "critical",
     message,
     agent_run_id,
     status: "open",
-    resolved_at: null,
   });
 }
-
 // Optional: safe attempt to mark failure even if Base44 is down
 async function safeMarkFailed({ message, duration_ms }) {
   try {
