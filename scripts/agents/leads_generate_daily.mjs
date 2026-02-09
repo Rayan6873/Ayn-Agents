@@ -143,7 +143,7 @@ export default async function leads_generate_daily(params = {}) {
       const rating = details.rating ?? 0;
       const reviews = details.user_ratings_total ?? 0;
       if (rating < min_rating) {
-        skippedLowRating.push({ place_id: pid, name: details.name, rating });
+        skippedLowRating.push({ place_id: pid, venue_name: details.name, rating });
         continue;
       }
 
@@ -152,7 +152,7 @@ export default async function leads_generate_daily(params = {}) {
 
       const lead = {
         place_id: details.place_id,
-        name: details.name,
+        venue_name: details.name,
         country,
         city: city.resolved_city_name,
         area: null,
@@ -172,7 +172,7 @@ export default async function leads_generate_daily(params = {}) {
       };
 
       await upsertLead(lead);
-      created.push({ place_id: lead.place_id, name: lead.name, bucket, lead_score });
+      created.push({ place_id: lead.place_id, venue_name: lead.venue_name, bucket, lead_score });
       taken++;
     }
   }
